@@ -4,16 +4,15 @@ import random
 from Chain import Chain
 from VerletRope import VerletRope
 from rope_optimizer import generate_optimized_ropes
+from SlimeObstacle import SlimeObstacle
 
 pygame.init()
 window_size = (800, 600)
 screen = pygame.display.set_mode(window_size)
 pygame.display.set_caption("Chain and Rope Game")
-
 background_color = (255, 255, 255)
 start_area_color = (0, 255, 0)
 end_area_color = (0, 0, 255)
-
 start_area = pygame.Rect(300, 550, 200, 50)
 end_area = pygame.Rect(350, 0, 100, 50)
 num_of_ropes = 10
@@ -34,13 +33,18 @@ def main():
     # Create optimized ropes
     optimized_rope_config = generate_optimized_ropes(window_size, num_of_ropes, start_area, end_area)
     ropes = [VerletRope((x, y), points, length) for (x, y, length, points) in optimized_rope_config]
+    
+    # Initialize slimes
+    num_of_slimes = 2
+    slimes = [SlimeObstacle((random.randint(100, 700), random.randint(150, 450)), 30, 20) for _ in range(num_of_slimes)]
 
     chain_start_pos = (400, 575)
     chain = Chain(chain_start_pos, 5, 20, math.pi / 4)
 
     while running:
+        delta_time = clock.get_time() / 1000.0  # Time in seconds
+
         screen.fill(background_color)
-        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -70,22 +74,28 @@ def main():
                     if rope.check_collision_with_chain(chain):
                         game_over = True
 
+                for slime in slimes:
+                    slime.update(delta_time)
+                    if slime.check_collision(chain):
+                        game_over = True
+
                 if end_area.collidepoint(chain_end):
                     game_won = True
 
                 chain.draw(screen)
                 for rope in ropes:
                     rope.draw(screen)
+                for slime in slimes:
+                    slime.draw(screen)
                 pygame.draw.rect(screen, end_area_color, end_area)
 
-            elif game_over:
-                display_message(screen, "Caught! Press SPACE to Restart", (255, 0, 0))
-            elif game_won:
-                display_message(screen, "You Won! Press SPACE to Play Again", (0, 0, 255))
+        if game_over:
+            display_message(screen, "Caught! Press SPACE to Restart", (255, 0, 0))
+        elif game_won:
+            display_message(screen, "You Won! Press SPACE to Play Again", (0, 0, 255))
 
         pygame.display.flip()
         clock.tick(60)
-
     pygame.quit()
 
 if __name__ == "__main__":
