@@ -1,11 +1,13 @@
 import pygame
-import math
 import random
+import math
 from Chain import Chain
 from VerletRope import VerletRope
 from rope_optimizer import generate_optimized_ropes
 from SlimeObstacle import SlimeObstacle
 from camera import Camera
+from coin import Coin
+from blue_tentacle import BlueTentacle
 
 def display_message(screen, message, color, window_size):
     font = pygame.font.SysFont(None, 55)
@@ -20,6 +22,10 @@ def generate_ropes(world_size, num_of_ropes, start_area, end_area):
     optimized_rope_config = generate_optimized_ropes(world_size, num_of_ropes, start_area, end_area)
     return [VerletRope((x, y), points, length) for (x, y, length, points) in optimized_rope_config]
 
+def generate_blue_tentacles(world_size, num_of_tentacles):
+    return [BlueTentacle((random.randint(100, 3100), random.randint(100, 2300)), points=5, segment_length=40)
+            for _ in range(num_of_tentacles)]
+
 def main():
     pygame.init()
     window_size = (800, 600)
@@ -31,8 +37,9 @@ def main():
     end_area_color = (0, 0, 255)
     start_area = pygame.Rect(1400, 2350, 200, 50)
     end_area = pygame.Rect(1500, 0, 100, 50)
-    num_of_ropes = 60
-    num_of_slimes = 25
+    num_of_ropes = 50
+    num_of_slimes = 20
+    num_of_blue_tentacles = 20
     clock = pygame.time.Clock()
     running = True
     game_over = False
@@ -44,9 +51,10 @@ def main():
     slimes = generate_world_content(num_of_slimes)
     chain_start_pos = (1600, 2300)
     chain = Chain(chain_start_pos, 5, 20, math.pi / 4)
-
-    # Generate initial ropes
     ropes = generate_ropes(world_size, num_of_ropes, start_area, end_area)
+    blue_tentacles = generate_blue_tentacles(world_size, num_of_blue_tentacles)
+
+    coin = Coin((1650, 2300), follow_distance=20)
 
     while running:
         delta_time = clock.get_time() / 1000.0
@@ -64,12 +72,12 @@ def main():
                     game_started = False
 
                     if game_won:
-                        # Only regenerate ropes and slimes if the player won
                         ropes = generate_ropes(world_size, num_of_ropes, start_area, end_area)
                         slimes = generate_world_content(num_of_slimes)
+                        blue_tentacles = generate_blue_tentacles(world_size, num_of_blue_tentacles)
 
-                    # Reset the chain
                     chain = Chain(chain_start_pos, 5, 20, math.pi / 4)
+                    coin = Coin((1650, 2300), follow_distance=20)
 
             if event.type == pygame.MOUSEBUTTONDOWN and not game_started:
                 mouse_world_pos = pygame.Vector2(event.pos) + camera.offset
@@ -77,20 +85,20 @@ def main():
                     game_started = True
 
         if show_full_map:
-            scale_factor = (window_size[0] / world_size[0], window_size[1] / world_size[1])
             game_surface = pygame.Surface(world_size)
             game_surface.fill(background_color)
-            
-            # Draw entire game world onto a surface
+
             for rope in ropes:
                 rope.draw(game_surface, camera)
             chain.draw(game_surface, camera)
             for slime in slimes:
                 slime.draw(game_surface, camera)
+            for tentacle in blue_tentacles:
+                tentacle.draw(game_surface, camera)
+            coin.draw(game_surface, camera)
             pygame.draw.rect(game_surface, start_area_color, start_area)
             pygame.draw.rect(game_surface, end_area_color, end_area)
-            
-            # Scale down and display this surface to fit on the screen
+
             scaled_surface = pygame.transform.scale(game_surface, window_size)
             screen.blit(scaled_surface, (0, 0))
             display_message(screen, "Full Map View: Press M to Toggle", (0, 0, 0), window_size)
@@ -109,14 +117,25 @@ def main():
                 chain.update(mouse_world_pos)
                 chain_end = chain.joints[-1]
 
+                coin.update(chain)
+
                 for rope in ropes:
                     rope.update(mouse_world_pos, chain_end)
                     if rope.check_collision_with_chain(chain):
                         game_over = True
+
                 for slime in slimes:
                     slime.update(delta_time)
                     if slime.check_collision(chain):
                         game_over = True
+
+                for tentacle in blue_tentacles:
+                    tentacle.update(chain, coin)
+                    if tentacle.has_coin and tentacle.points[0].distance_to(chain.joints[0]) < 25:
+                        # Check if player is close enough to retrieve the coin
+                        coin.collected = True
+                        tentacle.has_coin = False
+
                 if end_area.collidepoint(chain_end):
                     game_won = True
 
@@ -125,6 +144,9 @@ def main():
                     rope.draw(screen, camera)
                 for slime in slimes:
                     slime.draw(screen, camera)
+                for tentacle in blue_tentacles:
+                    tentacle.draw(screen, camera)
+                coin.draw(screen, camera)
 
                 transformed_end_area = pygame.Rect(
                     camera.apply(pygame.Vector2(end_area.topleft)),
