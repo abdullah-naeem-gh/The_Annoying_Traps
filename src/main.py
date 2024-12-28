@@ -18,9 +18,9 @@ start_area_color = (0, 255, 0)
 end_area_color = (0, 0, 255)
 
 # Game settings
-start_area = pygame.Rect(300, 550, 200, 50)  # start area at the bottom
-end_area = pygame.Rect(350, 0, 100, 50)     # end area at the top
-num_of_ropes = 2
+start_area = pygame.Rect(300, 550, 200, 50)
+end_area = pygame.Rect(350, 0, 100, 50)
+num_of_ropes = 10
 
 def display_message(screen, message, color):
     font = pygame.font.SysFont(None, 55)
@@ -33,10 +33,9 @@ def generate_random_ropes(num, length_range, points_range):
     for _ in range(num):
         x = random.randint(100, 700)
         y = random.randint(100, 500)
-        length = random.randint(*length_range)
+        segment_length = random.randint(*length_range)
         points = random.randint(*points_range)
-        rope = VerletRope((x, y), points, length)
-        rope.cycle_period = random.randint(60, 120)  # Varied speed
+        rope = VerletRope((x, y), points, segment_length)
         ropes.append(rope)
     return ropes
 
@@ -52,7 +51,7 @@ def main():
     chain = Chain(chain_start_pos, 5, 20, math.pi / 4)
 
     # Generate random ropes
-    ropes = generate_random_ropes(num_of_ropes, length_range=(30, 70), points_range=(5, 10))
+    ropes = generate_random_ropes(num_of_ropes, length_range=(3, 7), points_range=(30, 35))
 
     while running:
         screen.fill(background_color)
@@ -70,7 +69,7 @@ def main():
                     game_won = False
                     game_started = False
                     chain = Chain(chain_start_pos, 5, 20, math.pi / 4)
-                    ropes = generate_random_ropes(num_of_ropes, length_range=(30, 70), points_range=(5, 10))
+                    ropes = generate_random_ropes(num_of_ropes, length_range=(3, 7), points_range=(30, 35))
 
         if not game_started:
             # Draw start area
@@ -79,8 +78,7 @@ def main():
         else:
             if not game_over and not game_won:
                 mouse_pos = pygame.mouse.get_pos()
-
-                # Update chain and ropers
+                # Update chain and ropes
                 chain.update(mouse_pos)
                 chain_end = chain.joints[-1]
 
