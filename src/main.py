@@ -2,12 +2,13 @@ import pygame
 import random
 import math
 from Chain import Chain
-from VerletRope import VerletRope
 from rope_optimizer import generate_optimized_ropes
 from SlimeObstacle import SlimeObstacle
 from camera import Camera
 from coin import Coin
-from blue_tentacle import BlueTentacle
+from smart_blue_tentacle import SmartBlueTentacle
+from smart_verlet_rope import SmartVerletRope
+
 
 def display_message(screen, message, color, window_size):
     font = pygame.font.SysFont(None, 55)
@@ -20,10 +21,10 @@ def generate_world_content(num_slimes):
 
 def generate_ropes(world_size, num_of_ropes, start_area, end_area):
     optimized_rope_config = generate_optimized_ropes(world_size, num_of_ropes, start_area, end_area)
-    return [VerletRope((x, y), points, length) for (x, y, length, points) in optimized_rope_config]
+    return [SmartVerletRope((x, y), points, length) for (x, y, length, points) in optimized_rope_config]
 
 def generate_blue_tentacles(world_size, num_of_tentacles):
-    return [BlueTentacle((random.randint(100, 3100), random.randint(100, 2300)), points=5, segment_length=40)
+    return [SmartBlueTentacle((random.randint(100, 3100), random.randint(100, 2300)), points=5, segment_length=40)
             for _ in range(num_of_tentacles)]
 
 def main():
@@ -68,7 +69,7 @@ def main():
                     game_over = False
                     game_won = False
                     game_started = False
-                    VerletRope.clear_cache()
+                    SmartVerletRope.clear_cache()
                     ropes = generate_ropes(world_size, num_of_ropes, start_area, end_area)
                     slimes = generate_world_content(num_of_slimes)
                     blue_tentacles = generate_blue_tentacles(world_size, num_of_blue_tentacles)
@@ -79,6 +80,12 @@ def main():
                 mouse_world_pos = pygame.Vector2(event.pos) + camera.offset
                 if start_area.collidepoint(mouse_world_pos):
                     game_started = True
+
+        for tentacle in blue_tentacles:
+            tentacle.is_visible = tentacle.is_in_view(camera, window_size)  
+
+        for rope in ropes:
+            rope.is_visible=rope.is_in_view(camera, window_size)    
 
         if show_full_map:
             game_surface = pygame.Surface(world_size)
