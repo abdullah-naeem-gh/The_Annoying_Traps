@@ -37,7 +37,7 @@ cd <repository-name>
 To start the game, run the following command:
 
 ```sh
-python main.py
+python src/main.py
 ```
 
 ## Gameplay
